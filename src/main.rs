@@ -142,18 +142,9 @@ fn playground(){
 }
 
 fn vec_test(){
-    let r = ReedSolomon::new(4, 2).unwrap(); // 3 data shards, 2 parity shards
+    let r = ReedSolomon::new(4, 2).unwrap(); // 4 data shards, 2 parity shards
 
-    /*let mut master_copy = shards!(
-        [0u8, 1u8,  2u8,  3u8, 9u8],
-        [3u8, 9u8,  7u8,  3u8, 9u8],
-        [4u8, 5u8,  6u8,  7u8, 12u8],
-        [8u8, 9u8, 10u8, 11u8, 80u8],
-        [0u8, 0u8,  0u8,  0u8, 0u8], // last 2 rows are parity shards
-        [0u8, 0u8,  0u8,  0u8, 0u8]
-    );*/
-
-    let mut master_copy = shards!(
+    let master_copy = shards!(
         [0, 1,  2,  3, 9],
         [3, 9,  7,  3, 9],
         [4, 5,  6,  7, 12],
@@ -164,37 +155,14 @@ fn vec_test(){
 
 
     const LEN: usize = 5;
-    //let mut lines: Vec< [&mut u8; LEN]> = Vec::new();
-    //let mut lines: Vec< [u8; LEN]> = Vec::new(); //<== last working
-    //let mut lines: std::vec::Vec<std::vec::Vec<&mut u8>> = Vec::new();
     let mut lines: std::vec::Vec<std::vec::Vec<u8>> = Vec::new();
 
-    //let mut lines: Vec<_> = master_copy.iter().cloned().map(Some).collect();
-
-    //let buffer = Box::new(&mut [0u8; LEN]);
-    //let buffer = [&mut 0u8; LEN];
-
-    let mut row = [0u8; LEN];
-    //let row_vec:Vec<u8> = Vec::new();
     for _i in 0..4 {
         let mut row_vec:Vec<u8> = Vec::new();
-        //let row:Vec<&mut u8> = Vec::new();
-        //lines.push(row);
 
-        //let row:Vec<&mut u8> = Vec::new();
-        //master_copy[_i].copy_within(buffer, LEN);
-
-        /*for _j in 0..5 {
-            //lines[_i].push(&mut master_copy[_i][_j]);
-            buffer[_j] = master_copy[_i][_j];
-        }*/
-
-        for (place, data) in row.iter_mut().zip(master_copy[_i].iter()){
-            row_vec.push(*data);
-            *place = *data;
+        for _j in 0..LEN{
+            row_vec.push(master_copy[_i][_j])
         }
-
-        //let buffer_out: &[&mut u8; LEN] = master_copy[_i].clone();
 
         lines.push(row_vec);
         println!("line row {} = {:?}", _i, lines[_i]);
@@ -212,7 +180,6 @@ fn vec_test(){
     }
     lines.push(row_vec);
 
-    //let mut shards = shards!(lines);
     r.encode(&mut lines).unwrap();
     println!(" created {} shards,", r.data_shard_count());
     println!(" created {} parity,", r.parity_shard_count());
@@ -222,27 +189,9 @@ fn vec_test(){
         println!("shard {} of line = {:?}", _i, shard);
         _i = _i +1;
     }
-    //let refs: Vec<&mut [u8]> = convert_2D_slices!(lines=>to_vec [&mut u8]);
-    //r.encode(&mut refs).unwrap();
 
-    // Make a copy and transform it into option shards arrangement
-    // for feeding into reconstruct_shards
-    /*let mut shards: Vec< [u8; LEN]> = Vec::new();
-    let mut shards_row_copy = [0u8; LEN];
-    let mut _i = 0;
-    
-    for shard in lines.iter(){
-        for (place, data) in shards_row_copy.iter_mut().zip(shard.iter()){
-            *place = *data;
-        }
-        shards.push(shards_row_copy);
-        println!("lines row {} = {:?}", _i, shards[_i]);
-        _i = _i + 1;
-    }*/
-
+    //clone lines into shards so some shards can be removed
     let mut shards: Vec<_> = lines.iter().cloned().map(Some).collect();
-
-    //assert_eq!(lines, shards);
 
     // We can remove up to 2 shards, which may be data or parity shards
     shards[0] = None;
@@ -253,11 +202,6 @@ fn vec_test(){
         println!("shard {} of shards = {:?}", _i, shards[_i]);
         _i = _i + 1;
     }
-
-    //r.encode(&mut shards).unwrap();
-
-    //let refs: Vec<&mut [u8]> = convert_2D_slices!(shards=>to_vec [&mut u8]);
-    //r.encode(&mut refs).unwrap();
 
     // Try to reconstruct missing shards
     r.reconstruct(&mut shards).unwrap();
