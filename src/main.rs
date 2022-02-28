@@ -11,7 +11,8 @@ use std::io::{self, Read, Write, ErrorKind, BufReader};
 //use fixed_buffer::{FixedBuf};
 use std::fs::File;
 use std::path::Path;
-
+use std::io::prelude::*;
+                                                                                                                                                             
 fn main() {
     code_it();
     playground();
@@ -28,48 +29,57 @@ fn read_and_code_it(){
     };
 
     const LEN: usize = 4096;
-    //let mut lines:Vec<[u8; LEN]> = Vec::new();
-    let mut lines: std::vec::Vec<std::vec::Vec<u8>> = Vec::new();
-    let mut line_buffer = [0u8; LEN];
-    while file.read(&mut line_buffer).unwrap() > 0 {
-        let mut line_vec: Vec<u8> = Vec::new();
+    let mut file_slices: std::vec::Vec<std::vec::Vec<u8>> = Vec::new();
+    let mut slice_buffer = [0u8; LEN];
+    let mut bytes_in_last_row = 0;
 
-        for _i in 0..LEN{
-            line_vec.push(line_buffer[_i]);
+    //slice the file into 4096 byte slices
+    let mut end_of_file = false;
+    while  end_of_file == false {
+        let bytes_read = file.read(&mut slice_buffer).unwrap();
+
+        if bytes_read != 0{
+            let mut slice_vec: Vec<u8> = Vec::new();
+            bytes_in_last_row = bytes_read;
+            for _i in 0..LEN{
+                slice_vec.push(slice_buffer[_i]);
+            }
+
+            /*for (place, data) in line_vec.iter_mut().zip(line_buffer.iter()){
+                line_vec.push(*data);
+                *place = *data;
+            }*/
+
+            file_slices.push(slice_vec);
+            slice_buffer = [0u8; LEN];
+        } else {
+            end_of_file = true;
         }
-
-        /*for (place, data) in line_vec.iter_mut().zip(line_buffer.iter()){
-            line_vec.push(*data);
-            *place = *data;
-        }*/
-
-        lines.push(line_vec);
-        line_buffer = [0u8; LEN];
-    }
-    println!("Vector size is {} lines.", lines.len());
+    }    
+    println!("Vector size is {} lines.", file_slices.len());
 
     //add parity slices
     let parity = 10;
     for _i in 0..parity {
-        let mut line_vec: Vec<u8> = Vec::new();
+        let mut parity_vec: Vec<u8> = Vec::new();
         for _j in 0..LEN{
-            line_vec.push(0);
+            parity_vec.push(0);
         }
+        file_slices.push(parity_vec);
     }
 
-        
+    //print out some details    
     /*for _i in 0..lines.len(){
         println!("row {} = {:?}", _i, lines[_i]);
     }*/
+    println!("Matrix is of length {}", (file_slices.len()));
+    println!("Vector size is {} lines plus {} lines of parity.", file_slices.len()-parity, parity);
 
-    println!("Matrix is of length {}", (lines.len()));
-    println!("Vector size is {} lines plus {} lines of parity.", lines.len()-parity, parity);
-
-    let r = ReedSolomon::new(lines.len()-parity, parity).unwrap();
-    r.encode(&mut lines).unwrap();
+    let r = ReedSolomon::new(file_slices.len()-parity, parity).unwrap();
+    r.encode(&mut file_slices).unwrap();
 
     //create a copy of the encoded file to work with.
-    let mut shards: Vec<_> = lines.iter().cloned().map(Some).collect();
+    let mut shards: Vec<_> = file_slices.iter().cloned().map(Some).collect();
 
     //remove 2 shards for reconstruction later
     shards[0] = None;
@@ -83,8 +93,45 @@ fn read_and_code_it(){
     let result: Vec<_> = shards.into_iter().filter_map(|x| x).collect();
 
     assert!(r.verify(&result).unwrap());
-    assert_eq!(lines, result);
-    println!("{}", "File reconstruction successful.")
+    assert_eq!(file_slices, result);
+
+    /*for slice in result.iter(){
+        println!("{:?}", slice);
+    }*/
+    println!("{}", "File reconstruction successful.");
+
+    //write the file to new file to test the image
+    let path = Path::new("copy.jpg");
+    let mut file = match File::create(&path) {
+        Err(why) => panic!("couldn't open {}: {}", display, why),
+        Ok(file) => file,
+    };
+    let mut slice_buffer = [0u8; LEN];
+    for row in 0..result.len()-parity{
+        for col in 0..result[row].len(){
+            if row < result.len()-parity-1{
+                slice_buffer[col] = result[row][col];
+            } else{
+                if col < bytes_in_last_row {
+                    slice_buffer[col] = result[row][col];
+                    let byte_buffer = [slice_buffer[col]];
+                    file.write_all(&byte_buffer);
+                } else {
+                    break;
+                }
+            }
+        }
+        if row < result.len()-parity-1{
+            file.write_all(&slice_buffer).unwrap();
+        }
+    }
+
+    /*for row in &result{
+        let data = row;
+        for i in data.iter(){
+            write!(f,"{}", i); 
+        }
+    }*/
 }
 
 fn code_it(){
