@@ -7,11 +7,11 @@ use reed_solomon_erasure::galois_8::ReedSolomon;
 // or use the following for Galois 2^16 backend
 //use reed_solomon_erasure::galois_16::ReedSolomon;
 
+//https://docs.rs/reed-solomon-erasure/latest/reed_solomon_erasure/
+
 use std::io::{self, Read, Write, ErrorKind, BufReader};
-//use fixed_buffer::{FixedBuf};
 use std::fs::File;
 use std::path::Path;
-use std::io::prelude::*;
                                                                                                                                                              
 fn main() {
     code_it();
