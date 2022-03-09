@@ -20,6 +20,7 @@ fn main() {
     read_and_code_it();
 }
 
+//This function reads in an image file, shards it, deletes some shards and reassembles it. The file is then written as a copy of the image
 fn read_and_code_it(){
     let path = Path::new("image.jpg");
     let display = path.display();
@@ -167,6 +168,7 @@ fn code_it(){
     println!("{}", "finished code_it.")
 }
 
+//some simple manipulation of examples found on the web
 fn playground(){
     let r = ReedSolomon::new(4, 2).unwrap();
 
@@ -201,6 +203,7 @@ fn playground(){
     println!("{}", "finished playground.")
 }
 
+//translating the static example into a dynamic vector.
 fn vec_test(){
     let r = ReedSolomon::new(4, 2).unwrap(); // 4 data shards, 2 parity shards
 
@@ -266,8 +269,7 @@ fn vec_test(){
     // Try to reconstruct missing shards
     r.reconstruct(&mut shards).unwrap();
 
-    //let mut _i = 0;
-    //for shard in shards.iter(){
+    //just print the shards for visual inspection
     for _r in 0..shards.len(){    
         println!("shard {} of shards = {:?}", _r, shards[_r]);
     }
